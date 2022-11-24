@@ -5,6 +5,8 @@ from holoviews.plotting.plotly.dash import to_dash
 from holoviews.operation.datashader import datashade
 
 
+mapbox_token = open(".mapbox_token").read()
+
 def get_layout():
     return html.Div([
         html.H2('Hello World')
