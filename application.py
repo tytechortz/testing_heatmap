@@ -1,6 +1,8 @@
 import dash
 from dash import dcc, html
-
+import holoviews as hv
+from holoviews.plotting.plotly.dash import to_dash
+from holoviews.operation.datashader import datashade
 
 
 def get_layout():
@@ -11,10 +13,10 @@ def get_layout():
 
 
 app = dash.Dash(__name__)
-components = to_dash(app, [overlay], reset_button=True)
+# components = to_dash(app, [overlay], reset_button=True)
 
 app.layout = get_layout
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(port=8000,debug=True)
