@@ -160,9 +160,10 @@ def update_plots(
     df = pd.read_csv('/Users/jamesswank/Desktop/TestingData_coordinates.csv')
     print(df)
     t0 = time.time()
-    coordinates_4326 = relayout_data and relayout_data.get("mapbox._derived", {}).get(
+    selected_coordinates = relayout_data and relayout_data.get("mapbox._derived", {}).get(
         "coordinates", None
     )
+    print(selected_coordinates)
 
     # if coordinates_4326:
     #     lons, lats = zip(*coordinates_4326)
@@ -178,15 +179,15 @@ def update_plots(
     #         "zoom": relayout_data.get("mapbox.zoom", None),
     #         "center": relayout_data.get("mapbox.center", None),
     #     }
-    if coordinates_4326:
-        lons, lats = zip(*coordinates_4326)
+    if selected_coordinates:
+        lons, lats = zip(*selected_coordinates)
         lon0, lon1 = max(min(lons), df[0][0]), min(max(lons), df[1][0])
         lat0, lat1 = max(min(lats), df[0][1]), min(max(lats), df[1][1])
-        coordinates_4326 = [
+        selected_coordinates = [
             [lon0, lat0],
             [lon1, lat1],
         ]
-        coordinates_3857 = epsg_4326_to_3857(coordinates_4326)
+        # coordinates_3857 = epsg_4326_to_3857(coordinates_4326)
         # position = {}
         position = {
             "zoom": relayout_data.get("mapbox.zoom", None),
@@ -277,8 +278,8 @@ def update_plots(
         "data": [
             {
                 "type": "scattermapbox",
-                # "lat": geolatitude,
-                # "lon": geolongitude,
+                "lat": df.geolatitude,
+                "lon": df.geolongitude,
                 # "customdata": customdata,
                 # "marker": marker,
                 "hovertemplate": (
