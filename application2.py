@@ -194,10 +194,10 @@ def update_plots(
     }
     else:
         position = {
-            "zoom": 0.5,
+            "zoom": 8,
             "pitch": 0,
             "bearing": 0,
-            "center": {"lon": -104, "lat": 39},
+            "center": {"lon": -104.8, "lat": 39.7},
         }
     #     coordinates_3857 = data_3857
     #     coordinates_4326 = data_4326
