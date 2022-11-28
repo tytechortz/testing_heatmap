@@ -2,7 +2,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
-
+from pyproj import Transformer
 import os
 
 import pandas as pd
@@ -12,7 +12,8 @@ import time
 from textwrap import dedent
 
 
-
+import datashader as ds
+import datashader.transfer_functions as tf
 
 
 
@@ -29,6 +30,18 @@ bar_color = "#546e7a"  # material blue-gray 600
 bar_selected_color = "#37474f"  # material blue-gray 800
 bar_unselected_opacity = 0.8
 
+
+df = pd.read_csv('/Users/jamesswank/Desktop/TestingData_coordinates.csv')
+
+t0 = time.time()
+
+transformer = Transformer.from_crs("epsg:4326", "epsg:3857")
+x_3857, y_3857 = transformer.transform(df.geolatitude.values, df.geolongitude.values)
+df = df.assign(x_3857=x_3857, y_3857=y_3857)
+
+
+
+print(df)
 
 
 # Figure template
@@ -157,9 +170,10 @@ def update_plots(
     relayout_data,
     # selected_tests
 ):
-    df = pd.read_csv('/Users/jamesswank/Desktop/TestingData_coordinates.csv')
-    print(df)
-    t0 = time.time()
+    
+
+    ddf = ddf.map_partitions(to3857)
+
     selected_coordinates = relayout_data and relayout_data.get("mapbox._derived", {}).get(
         "coordinates", None
     )
@@ -200,15 +214,41 @@ def update_plots(
             "bearing": 0,
             "center": {"lon": -104.8, "lat": 39.7},
         }
-    #     coordinates_3857 = data_3857
-    #     coordinates_4326 = data_4326
 
-    # new_coordinates = [
-    #     [coordinates_4326[0][0], coordinates_4326[1][1]],
-    #     [coordinates_4326[1][0], coordinates_4326[1][1]],
-    #     [coordinates_4326[1][0], coordinates_4326[0][1]],
-    #     [coordinates_4326[0][0], coordinates_4326[0][1]],
-    # ]
+    cvs = ds.Canvas(plot_width=700, plot_height=400)
+    # agg = cvs.points(
+    #     ddf_selected_range_created, x="x_3857", y="y_3857", agg=ds.count_cat("radio")
+    # )
+
+
+    img = tf.shade(df, min_alpha=100).to_pil()
+
+    # Resize image to map size to reduce image blurring on zoom.
+    img = img.resize((1400, 800))
+
+    # Add image as mapbox image layer. Note that as of version 4.4, plotly will
+    # automatically convert the PIL image object into a base64 encoded png string
+    layers = [
+        {"sourcetype": "image", "source": img, "coordinates": new_coordinates}
+    ]
+
+    # Do not display any mapbox markers
+    df.geolatitude = [None]
+    df.geolongitude = [None]
+    customdata = [None]
+    marker = {}
+
+
+
+    #     coordinates_3857 = data_3857
+    coordinates_4326 = data_4326
+
+    new_coordinates = [
+        [coordinates_4326[0][0], coordinates_4326[1][1]],
+        [coordinates_4326[1][0], coordinates_4326[1][1]],
+        [coordinates_4326[1][0], coordinates_4326[0][1]],
+        [coordinates_4326[0][0], coordinates_4326[0][1]],
+    ]
 
     # x_range, y_range = zip(*coordinates_3857)
     # x0, x1 = x_range
