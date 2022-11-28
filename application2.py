@@ -170,7 +170,7 @@ def update_plots(
         # position = {}
         position = {
             "zoom": relayout_data.get("mapbox.zoom", None),
-            "center": relayout_data.get("mapbox.center", None),
+            "center": {"lon": data_center_4326[0][0], "lat": data_center_4326[0][1]},
         }
     else:
         position = {
