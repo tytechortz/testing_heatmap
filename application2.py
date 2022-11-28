@@ -14,13 +14,26 @@ from textwrap import dedent
 
 import datashader as ds
 import datashader.transfer_functions as tf
+from distributed import Client
 
+from utils import (
+    epsg_4326_to_3857,
+    get_dataset,
+    scheduler_url,
+)
 
+# Global initialization
+client = None
 
-
-
-
-
+def init_client():
+    """
+    This function must be called before any of the functions that require a client.
+    """
+    global client
+    # Init client
+    print(f"Connecting to cluster at {scheduler_url} ... ", end="")
+    client = Client(scheduler_url)
+    print("done")
 
 # Colors
 bgcolor = "#f3f3f1"  # mapbox light map land color
@@ -125,37 +138,6 @@ app.layout = html.Div(
 )
 
 
-# Create show/hide callbacks for each info modal
-# for id in ["indicator", "radio", "map", "range", "created"]:
-
-# @app.callback(
-#     [Output(f"{id}-modal", "style"), Output(f"{id}-div", "style")],
-#     [Input(f"show-{id}-modal", "n_clicks"), Input(f"close-{id}-modal", "n_clicks")],
-# )
-# def toggle_modal(n_show, n_close):
-#     ctx = dash.callback_context
-#     if ctx.triggered and ctx.triggered[0]["prop_id"].startswith("show-"):
-#         return {"display": "block"}, {"zIndex": 1003}
-#     else:
-#         return {"display": "none"}, {"zIndex": 0}
-
-
-# # Create clear/reset button callbacks
-# @app.callback(
-#     Output("map-graph", "relayoutData"),
-#     [Input("reset-map", "n_clicks"), Input("clear-all", "n_clicks")],
-# )
-# def reset_map(*args):
-#     return None
-
-
-# @app.callback(
-#     # Output("tests-histogram", "selectedData"),
-#     [Input("clear-tests", "n_clicks"), Input("clear-all", "n_clicks")],
-# )
-# def clear_tests_hist_selections(*args):
-#     return None
-
 @app.callback(
     [
         Output("map-graph", "figure"),
@@ -170,50 +152,42 @@ def update_plots(
     relayout_data,
     # selected_tests
 ):
-    
 
-    ddf = ddf.map_partitions(to3857)
+    data_3857 = get_dataset(client, "data_3857")
+    data_4326 = get_dataset(client, "data_4326")
 
-    selected_coordinates = relayout_data and relayout_data.get("mapbox._derived", {}).get(
-        "coordinates", None
-    )
-    print(selected_coordinates)
 
-    # if coordinates_4326:
-    #     lons, lats = zip(*coordinates_4326)
-    #     lon0, lon1 = max(min(lons), data_4326[0][0]), min(max(lons), data_4326[1][0])
-    #     lat0, lat1 = max(min(lats), data_4326[0][1]), min(max(lats), data_4326[1][1])
-    #     coordinates_4326 = [
-    #         [lon0, lat0],
-    #         [lon1, lat1],
-    #     ]
-    #     coordinates_3857 = epsg_4326_to_3857(coordinates_4326)
-    #     # position = {}
-    #     position = {
-    #         "zoom": relayout_data.get("mapbox.zoom", None),
-    #         "center": relayout_data.get("mapbox.center", None),
-    #     }
-    if selected_coordinates:
-        lons, lats = zip(*selected_coordinates)
-        lon0, lon1 = max(min(lons), df[0][0]), min(max(lons), df[1][0])
-        lat0, lat1 = max(min(lats), df[0][1]), min(max(lats), df[1][1])
-        selected_coordinates = [
+
+    if coordinates_4326:
+        lons, lats = zip(*coordinates_4326)
+        lon0, lon1 = max(min(lons), data_4326[0][0]), min(max(lons), data_4326[1][0])
+        lat0, lat1 = max(min(lats), data_4326[0][1]), min(max(lats), data_4326[1][1])
+        coordinates_4326 = [
             [lon0, lat0],
             [lon1, lat1],
         ]
-        # coordinates_3857 = epsg_4326_to_3857(coordinates_4326)
+        coordinates_3857 = epsg_4326_to_3857(coordinates_4326)
         # position = {}
         position = {
             "zoom": relayout_data.get("mapbox.zoom", None),
             "center": relayout_data.get("mapbox.center", None),
-    }
+        }
     else:
         position = {
-            "zoom": 8,
+            "zoom": 0.5,
             "pitch": 0,
             "bearing": 0,
-            "center": {"lon": -104.8, "lat": 39.7},
+            "center": {"lon": 39.6, "lat": -104},
         }
+        coordinates_3857 = data_3857
+        coordinates_4326 = data_4326
+
+    new_coordinates = [
+        [coordinates_4326[0][0], coordinates_4326[1][1]],
+        [coordinates_4326[1][0], coordinates_4326[1][1]],
+        [coordinates_4326[1][0], coordinates_4326[0][1]],
+        [coordinates_4326[0][0], coordinates_4326[0][1]],
+    ]
 
     cvs = ds.Canvas(plot_width=700, plot_height=400)
     # agg = cvs.points(
